@@ -1,0 +1,39 @@
+﻿{% extends 'app/index.html' %}
+
+{% block content %}
+    <h1>{% if content.0.id %} Item {{ content.0.id }} {% endif %}</h1>
+    <form action="" method="POST">
+        {% csrf_token %}
+        {% for a in content %}
+            {% for key,v in a.items %}
+                {% if key != 'id' %}
+                <div class="row">
+                    <div class="row-name">{{ key }}</div>
+                    <input type="{% if key == "password" %}password{% else %}text{% endif %}" name="{{ key }}" value="{{ v }}"/>
+                </div>
+                {% else %}
+                <input type="hidden" name="{{ key }}" value="{{ v }}"/>
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+        <div>
+            <input type="submit" name="void[submit]" value="submit"/>
+        </div>
+    </form>
+{% endblock %}
+
+{% block css %}
+<style>
+    h1 {
+        padding: 0px;
+    }
+    .row-name {
+        margin-left: 20px;
+        float: left;
+        width: 100px;
+    }
+    .row input {
+        float: left;
+    }
+</style>
+{% endblock %}

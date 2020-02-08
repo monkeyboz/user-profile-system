@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29709.97
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "ProfileLayout", "ProfileLayout\ProfileLayout.pyproj", "{46DCE0B6-4AFD-4932-869F-65F58C8B595C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{46DCE0B6-4AFD-4932-869F-65F58C8B595C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46DCE0B6-4AFD-4932-869F-65F58C8B595C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46DCE0B6-4AFD-4932-869F-65F58C8B595C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46DCE0B6-4AFD-4932-869F-65F58C8B595C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B0610A94-2D6F-4A59-BBE9-4F5FFC8CD8F8}
+	EndGlobalSection
+EndGlobal

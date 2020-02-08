@@ -1,0 +1,23 @@
+﻿[
+{% for key,u in users.items %}
+    {
+        "username":"{{ u.user.username }}",
+        "email":"{{ u.user.email }}",
+        "calendars":[
+        {% for a in u.calendars %}
+            {
+                "date":"{{ a.event.date }}",
+                "duration":"{{ a.event.calendar_duration }}",
+                "time":"{{ a.event.time }}"
+                "description":"{{ a.event.description }}"
+                "positions": [ 
+            {% for v in a.position %}
+                { {{ v.location }} },
+            {% endfor %}
+                ]
+            },
+        {% endfor %}
+        ]
+    }
+{% endfor %}
+]
