@@ -3,11 +3,12 @@ Customizations for the Django administration interface.
 """
 from django.contrib import admin
 from django.db import models
-from app.models import Client, ClientInfo, CalendarFile, Calendar, Position, File, PositionInfo
+from app.models import Client, ClientInfo, MainClientInfo, CalendarFile, Calendar, Position, File, PositionInfo
 
 from django.forms.models import modelformset_factory, inlineformset_factory
 from django.template.defaultfilters import escape
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
+from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django import forms
 
@@ -59,7 +60,19 @@ class PositionAdmin(admin.ModelAdmin):
     getclient.short_description = 'Client Name'
     
 class FileAdmin(admin.ModelAdmin):
-    list_display = ('id','getfilename','getusername','gettype')
+    list_display = ('id','getfilename','getusername','gettype','virus_report')
+
+    fieldsets = (
+                ('File Info',{
+                    'fields':('file_type','path','client_id')
+                }),
+                ('Virus Info',{
+                    'fields':('virusscan_resource','scan_date','virus')
+                })
+             )
+    
+    def virus_report(self,instance):
+        return format_html(instance.getVirusDefs())
 
     def getfilename(self,obj):
         return obj.path
@@ -74,6 +87,7 @@ class FileAdmin(admin.ModelAdmin):
     getfilename.short_description = 'Filename'
     getusername.short_description = 'Username'
     gettype.short_description = 'Type'
+    virus_report.short_description = "Viruses"
 
 class PositionInline(admin.TabularInline):
     model = Position
@@ -102,14 +116,28 @@ class ClientInfoAdmin(admin.ModelAdmin):
 class PositionInfoAdmin(admin.ModelAdmin):
     list_display = ('id','country','city','state','zip')
 
+class MainClientInfoAdmin(admin.ModelAdmin):
+    list_display = ('id','getclient_id','getclientinfo_id')
+    list_filter = ['id','client_id']
+    def getclient_id(self,obj):
+        return obj.client_id.username
+    def getclientinfo_id(self,obj):
+        return obj.client_info_id.firstname+' '+obj.client_info_id.lastname
+
+    getclientinfo_id.short_description = 'Client Name'
+    getclient_id.short_description = 'Client Username'
+
 class ClientFileAdmin(admin.ModelAdmin):
     list_display = ('getcalendar','getfile')
-
+    list_filter = ['calendar_id','file_id']
     def getcalendar(self,obj):
         return obj.calendar_id.name
 
     def getfile(self,obj):
         return obj.file_id.path
+
+admin.site.site_header = 'Mobile File App'
+admin.site.site_title = 'Something'
 
 #admin.site.register(Poll, PollAdmin)
 admin.site.register(Client, ClientAdmin)
@@ -119,3 +147,4 @@ admin.site.register(PositionInfo,PositionInfoAdmin)
 admin.site.register(ClientInfo,ClientInfoAdmin)
 admin.site.register(File,FileAdmin)
 admin.site.register(CalendarFile,ClientFileAdmin)
+admin.site.register(MainClientInfo,MainClientInfoAdmin)

@@ -41,11 +41,15 @@ urlpatterns = [
     path('put/<str:object_name>/<int:id>',app.views.putObject,name='putobjectuser'),
     path('put/<str:object_name>/<str:user_id>/<int:id>',app.views.putObject,name='putobjectuserid'),
 
-    path('api/user/login',app.views.objectApi,name='apilogin'),
+    path('api/login',app.views.login,name='apilogin'),
+    path('api/logout',app.views.logout,name='apilogout'),
+    path('api/user/login',app.views.login,name='apilogin'),
+    path('api/user/logout',app.views.logout,name='apilogout'),
     path('api/<str:object_name>',app.views.objectApi,name='apicall'),
     path('api/<str:object_name>/<int:id>',app.views.objectApi,name='apicallid'),
     path('api/<str:object_name>/<str:user_id>/<int:id>',app.views.objectApi,name='apicalluserid'),
 
+    path('checkviruses',app.views.checkviruses,name='checkviruses'),
     path('download/<int:user_id>/<str:image>',app.views.download,name='download'),
 
     #path('get_file',app.views.getFile, name='getfile'),

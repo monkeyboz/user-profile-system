@@ -2,6 +2,8 @@
 Definition of models.
 """
 
+import json
+
 from django.db import models
 from django.utils import timezone
 from django.db.models import Sum
@@ -17,6 +19,9 @@ class Client(models.Model):
 
     def __str__(self):
         return 'Client: '+self.username+' - '+str(self.id)
+
+    def getMainClientInfo(self):
+        return MainClientInfo.objects.filter(client_id=self.id)
 
     def getClientInfo(self):
         return ClientInfo.objects.filter(client_id=self.id)
@@ -70,6 +75,22 @@ class File(models.Model):
     def __str__(self):
         return 'File: '+self.path+' - ('+str(self.id)+')'
 
+    def getVirusDefs(self):
+        tl = ''
+        scans = json.loads(self.virus)
+        totals = ''
+        for a in scans['scans']:
+            if scans['scans'][a]['detected'] == True:
+                detected = 'true'
+                info = '<span class="'+detected+'">'+a+'</span>'
+                sections = []
+                for m in scans['scans'][a]:
+                    info += '<div>'+m+': '+str(scans['scans'][a][m])+'</div>'
+                totals += info+'<br/>'
+        if len(totals) < 1:
+            totals = '<div style="color: #00ff00;">No Viruses</div>'
+        return totals
+
 class CalendarFile(models.Model):
     id = models.AutoField(primary_key=True)
     calendar_id = models.ForeignKey(Calendar,on_delete=models.CASCADE)
@@ -109,6 +130,12 @@ class ClientInfo(models.Model):
     created = models.DateTimeField(default=timezone.now)
     modified = models.DateTimeField(default=timezone.now)
 
+class MainClientInfo(models.Model):
+    id = models.AutoField(primary_key=True)
+    client_id = models.ForeignKey(Client,on_delete=models.CASCADE)
+    client_info_id = models.ForeignKey(ClientInfo,on_delete=models.CASCADE)
+    created = models.DateTimeField(default=timezone.now())
+    modified = models.DateTimeField(default=timezone.now())
 
 #class Poll(models.Model):
 #   A poll object for use in the application views and repository.

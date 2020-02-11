@@ -1,0 +1,9 @@
+﻿[
+{% for a in objects %}
+    {
+        {% for k,m in a.items %}
+            "{{ k }}":"{{ m }}" {% if field_size > forloop.counter %},{% endif %}
+        {% endfor %}
+    }{% if length > forloop.counter %},{% endif %}
+{% endfor %}
+]

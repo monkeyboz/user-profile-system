@@ -1,4 +1,4 @@
-from app.models import Client, ClientInfo, Position, File, Calendar
+from app.models import Client, ClientInfo, MainClientInfo, Position, File, Calendar
 from django.http import HttpRequest, HttpResponseRedirect,HttpResponse, Http404
 from django.db.models.options import Options
 from django.shortcuts import get_object_or_404, render
@@ -8,28 +8,82 @@ from Crypto.PublicKey import RSA
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
 from app.templates.classes.file_handler import FileHandler
+from django.core.serializers.json import DjangoJSONEncoder
+
 import hashlib
-
 import os
+import json
 
+#Request Object for getting information from url calls
 class RequestObjects():
-    def __init__(self,request,request_type,method,object_name=0,user_id=0,id=0,start=0,limit=0):
+    def __init__(self,request,request_type,method,logout=0,object_name=0,user_id=0,id=0,start=0,limit=0):
         assert isinstance(request,HttpRequest)
+        #set client and mainclientinfo objects for retreiving information
+        self.client = None;
+        self.mainclientinfo = None;
 
-        self.method = method
-
-        self.request = request
-        self.login = self.checklogin()
-        if self.login:
-            self.initCompleted = self.completeInit(request_type,method,object_name,user_id,id,start,limit)
+        #check if logout is selected
+        if logout == 1:
+            self.request = request
+            self.logout()
+            self.initCompleted = self.completeInit()
         else:
-            self.initCompleted = self.completeInit(request_type,method,object_name,user_id,id,start,limit)
-        
+            self.method = method
+
+            self.request = request
+            self.login = self.checklogin()
+            if self.login:
+                self.initCompleted = self.completeInit(request_type,method,object_name,user_id,id,start,limit)
+    
+    #Get Api Key
+    def getApiKey(self):
+        if 'api_result_key' in self.request.session:
+            return render(
+                    self.request,
+                    'app/objects_bk.html',
+                    {
+                        'objects':list(self.mainclientinfo.values())
+                    }
+                )
+        else:
+            return render(
+                    self.request,
+                    'app/json.html',
+                    {
+                        'object':'is not logged-in',
+                        'id':'0',
+                        'response':'OK'
+                    }
+                )
+
+    #Get Login Results (returns object)
+    def getLoginResult(self):
+        if self.mainclientinfo != None and self.client != None:
+            return render(
+                    self.request,
+                    'app/objects_bk.html',
+                    {
+                        'objects':list(self.mainclientinfo.values())
+                    }
+                )
+        else:
+            return render(
+                    self.request,
+                    'app/json.html'
+                )
+
+    #Get Request Object
+    def getRequestObject(self):
+        return self.request
+
+    #Log out
+    def logout(self):
+        del self.request.session
+        return True
+
     #complete the initialization of RequestObjects
     def completeInit(self,request_type=0,method=0,object_name=0,user_id=0,id=0,start=0,limit=0):
         self.request_type = request_type
-        self.client = ''
-        self.clientinfo = ''
         
         self.object_name = self.checkVariable(object_name)
         self.user_id = self.checkVariable(user_id)
@@ -55,7 +109,7 @@ class RequestObjects():
                 if self.request.POST['api_key'] != None:
                     if self.getClient(self.request.POST['api_key']):
                         if len(self.client) > 0:
-                            self.clientinfo = self.client[0].getClientInfo()
+                            self.mainclientinfo = self.client[0].getMainClientInfo()
                             self.updateRecord()
                             self.uploadFiles()
                             return True
@@ -65,28 +119,13 @@ class RequestObjects():
         else:
             return False
 
+    #Get client information
     def getClient(self,api_key):
         self.client = Client.objects.filter(clientinfo__access_key=api_key)
         if len(self.client) > 0:
             return True
         else:
             return False
-
-    #def updateRecord(self):
-    #    if self.request.POST['password'] != None:                           
-    #        if len(self.client) > 0:
-    #            key = self.client[0].access_key
-    #            cipher = AES.new(key,AES.MODE_GCM)
-    #            ciphertext, tag = cipher.encrypt_and_digest(self.request.POST['password'].encode('UTF-8'))
-    #            self.request.POST['password'] = ciphertext
-    #
-    #    uploadFiles()
-    #
-    #    if len(self.client) > 0:
-    #        if self.id != 0:
-    #            self.updateRecord()
-    #        else:
-    #            self.saveRecord()
 
     #upload files to media directory
     def uploadFiles(self):
@@ -101,17 +140,41 @@ class RequestObjects():
     #check if user is logged in
     def checklogin(self):
         if 'api_result_key' in self.request.session:
-            self.clientinfo = ClientInfo.objects.filter(access_key=self.request.POST['api_key'])
-            return True
-        else:
-            if len(self.request.POST) > 0 and 'api_key' in self.request.POST:
-                self.clientinfo = ClientInfo.objects.filter(access_key=self.request.POST['api_key'])
-                if len(self.clientinfo) > 0:
-                    self.request.session['api_result_key'] = hashlib.sha1(self.request.POST['api_key'].encode()).hexdigest()
-                    self.request.session['user_id'] = self.clientinfo[0].client_id.id
+            if 'api_key' in self.request.POST:
+                self.mainclientinfo = MainClientInfo.objects.filter(client_info_id__access_key=self.request.POST['api_key'])
+                if len(self.mainclientinfo.values()) > 0:
+                    self.client = Client.objects.get(pk=self.mainclientinfo[0].client_id.id)
                     return True
+                else:
+                    return False
+            else:
+                self.mainclientinfo = MainClientInfo.objects.filter(client_id=self.request.session['user_id'])
+                if len(self.mainclientinfo.values()) > 0:
+                    self.client = Client.objects.get(pk=self.mainclientinfo[0].client_id.id)
+                return False
+        else:
+            if len(self.request.POST) > 0 and ('api_key' in self.request.POST and 'password' in self.request.POST and 'username' in self.request.POST) or ('password' in self.request.POST and 'username' in self.request.POST):
+                self.client = Client.objects.filter(password=self.request.POST['password'])
+                if len(self.client.values()):
+                    self.mainclientinfo = MainClientInfo.objects.filter(client_id=self.client.values()[0]['id'])
+                    if len(self.mainclientinfo) > 0:
+                        if('api_key' in self.request.POST and self.request.POST['api_key'] == self.mainclientinfo[0].client_info_id.access_key):
+                            self.request.session['api_result_key'] = hashlib.sha1(self.request.POST['api_key'].encode()).hexdigest()
+                            #self.request.session['user_id'] = self.mainclientinfo[0].client_id.id
+                            print('session_started: '+self.request.session['api_result_key'])
+                            return True
+                        else:
+                            self.request.session['api_result_key'] = hashlib.sha1(self.mainclientinfo[0].client_info_id.access_key.encode()).hexdigest()
+                            #self.request.session['user_id'] = self
+                            print('session_started_with_new_api_key: '+self.mainclientinfo[0].client_info_id.access_key)
+                            return True
+                    else:
+                        print('cannot find user')
+                else:
+                    print('cannot login')
                 return False
             else:
+                print('No way to login')
                 return False
 
     #save record for database
@@ -198,6 +261,7 @@ class RequestObjects():
 
     #get a response from the query search
     def response(self):
+        #checks to make sure that all variables are initalized
         if self.login == False or self.initCompleted == False:
             return render(
                     self.request,
@@ -205,7 +269,7 @@ class RequestObjects():
                 )
         object = self.query()
 
-        if object != 0:
+        if object != None:
             result = object['result']
             return render(
                 self.request,
@@ -230,7 +294,7 @@ class RequestObjects():
     #post request response
     def postRequest(self):
         object = self.query()
-        if object != 0:
+        if object != 0 or object != None:
             result = object['result']
             id = object['user_id']
             return render(
@@ -247,47 +311,60 @@ class RequestObjects():
 
     #query object for search
     def query(self):
-        object = self.getObject(self.object_name)
-        if object == 0:
-            return object
-        my_filter = {}
-        if self.user_id != 0:
-            my_filter[object['user_id']] = self.user_id
+        if hasattr(self,'object_name'):
+            object = self.getObject(self.object_name)
+            if object == 0:
+                return object
+            my_filter = {}
+            if self.user_id != 0:
+                my_filter[object['user_id']] = self.user_id
             
-        if self.id != 0:
-            my_filter['id'] = self.id
+            if self.id != 0:
+                my_filter['id'] = self.id
         
-        if len(my_filter) > 0:
-            if self.limit != 0 and self.start != 0:
-                l = object['class'].objects.filter(**my_filter)[self.start-1:self.limit]
-            elif(self.limit == 0 and self.start != 0):
-                l = object['class'].objects.filter(**my_filter)[self.start-1:]
-            elif(self.limit != 0 and self.start == 0):
-                l = object['class'].objects.filter(**my_filter)[:self.limit]
+            if len(my_filter) > 0:
+                if self.limit != 0 and self.start != 0:
+                    l = object['class'].objects.filter(**my_filter)[self.start-1:self.limit]
+                elif(self.limit == 0 and self.start != 0):
+                    l = object['class'].objects.filter(**my_filter)[self.start-1:]
+                elif(self.limit != 0 and self.start == 0):
+                    l = object['class'].objects.filter(**my_filter)[:self.limit]
+                else:
+                    l = object['class'].objects.filter(**my_filter)
             else:
-                l = object['class'].objects.filter(**my_filter)
-        else:
-            if self.limit != 0 and self.start != 0:
-                l = object['class'].objects.all()[self.start-1:self.limit]
-            elif(self.limit == 0 and self.start != 0):
-                l = object['class'].objects.all()[self.start-1:]
-            elif(self.limit != 0 and self.start == 0):
-                l = object['class'].objects.all()[:self.limit]
-            else:
-                l = object['class'].objects.all()
+                if self.limit != 0 and self.start != 0:
+                    l = object['class'].objects.all()[self.start-1:self.limit]
+                elif(self.limit == 0 and self.start != 0):
+                    l = object['class'].objects.all()[self.start-1:]
+                elif(self.limit != 0 and self.start == 0):
+                    l = object['class'].objects.all()[:self.limit]
+                else:
+                    l = object['class'].objects.all()
 
-        object['result'] = l
-        return object
+            object['result'] = l
+            return object
+        else:
+            print('no object_name')
+            return None
 
     #get request for object_type
     def getRequest(self):
-        result = self.query()
+        result = self.query()  #returns None if it is completed without an object
 
-        answer = render(self.request,'app/objects.html',{
-                'objects':result['result'].values(),
-                'length':len(list(result['result'].values())),
-                'field_size':result['size']
-            })
+        if result != None:
+            answer = render(self.request,'app/objects_bk.html',{
+                    'objects':result['result'].list()
+                })
+        else:
+            answer = render(
+                    self.request,
+                    'app/json.html',
+                    {
+                        'id':'null',
+                        'object':'No object type',
+                        'response':'OK'
+                    }
+                )
 
         return answer
 

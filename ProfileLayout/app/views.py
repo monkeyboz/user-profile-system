@@ -5,9 +5,10 @@ Definition of views.
 import json
 import random
 import hashlib
+import fileinput
+
 from faker import Faker
 from django.core.serializers.json import DjangoJSONEncoder
-import fileinput
 from app.templates.classes.request_objects import RequestObjects
 from app.templates.classes.file_handler import FileHandler
 from os import path
@@ -40,22 +41,47 @@ def getObject(request,object_name=0,user_id=0,id=0,start=0,limit=0):
     get = RequestObjects(request,"getobject","GET",object_name,user_id,id,start,limit)
     return get.display()
 
+@csrf_exempt
 def login(request):
-    assert isinstance(request,HttpRequest)
-    if 'sessionid' in request.session:
-        print(request.session.get('sessionid'))
-        return False
-    else:
-        return True
+    get = RequestObjects(request,'postobject','POST','client')
+    return get.getApiKey()
 
 @csrf_exempt
 def objectApi(request,object_name=0,user_id=0,id=0):
     put = RequestObjects(request,'api','POST',object_name,user_id,id)
-    return put.response()
+    if put != False:
+        return put.response()
+    else:
+        return render(
+                put.getRequestObject(),
+                'app/json.html'
+            )
 
 def download(request,user_id=0,image=0,expert=0):
     d = FileHandler(request)
     return d.downloadFile(image,user_id)
+
+def checkviruses(request):
+    d = FileHandler(request)
+    assert isinstance(request,HttpRequest)
+    print(d.scanallnonprocessed())
+    return render(
+            request,
+            'app/index.html'
+        )
+
+@csrf_exempt
+def logout(request):
+    t = RequestObjects(request,0,0,1)
+    return render(
+            t.getRequestObject(),
+            'app/json.html',
+            {
+                'response':'OK',
+                'id':'null',
+                'object':'logged out'
+            }
+        )
 
 def putObject(request,object_name=0,user_id=0,id=0):
     put = RequestObjects(request,"putobject","POST",object_name,user_id,id)
@@ -63,7 +89,7 @@ def putObject(request,object_name=0,user_id=0,id=0):
     print(put.display())
     if put.display() == None:
         return render(
-                put.request,
+                put.getRequestObject(),
                 'app/index.html'
             )
     return put.display()
@@ -171,10 +197,10 @@ def seed(request):
     #        choice.save()
     
     fake = Faker()
-    #for i in range(10,100):
-    #    RandomPosition(fake)
-    #for a in range(0,random.randrange(4,10)):
-    #    RandomClient(fake)
+    for i in range(10,100):
+        RandomPosition(fake)
+    for a in range(0,random.randrange(4,10)):
+        RandomClient(fake)
     for b in range(1,random.randrange(5,10)):
         RandomClientInfo(fake)
     return HttpResponseRedirect(reverse('app:home'))

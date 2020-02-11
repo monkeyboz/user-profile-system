@@ -8,7 +8,7 @@ import requests
 import json
 
 class FileHandler():
-    def __init__(self,request,id,expert=False):
+    def __init__(self,request,id=0,expert=False):
         self.request = request
         self.id = id
         self.filelist = []
@@ -22,6 +22,9 @@ class FileHandler():
         filestore = {'file':(str(filename),f)}
         response = requests.post(self.virusscanurl,files=filestore,params=self.params)
         return response.json()
+
+    def scanallnonprocessed(self):
+        return self.getReports()
 
     #upload file to media directory
     def uploadFile(self,file):
@@ -52,21 +55,25 @@ class FileHandler():
 
     #get report for file in media directory
     def getReports(self):
-        files = File.objects.filter(virus__isnull=True)
+        files = File.objects.exclude(virus__contains='total')
+        print(len(files.values()))
         for a in files.values():
             params = self.params
             params['resource'] = a['virusscan_resource']
             v = requests.post(self.scanreporturl,params)
             if v.status_code == requests.codes.ok:
                 m = v.json()
-                print(m['scan_date'])
                 if 'scan_date' in m:
                     #save file with virus definitions
                     f = File.objects.filter(virusscan_resource=m['resource'])
                     update = {}
-                    update['virus'] = m
+                    update['virus'] = json.dumps(m)
                     update['scan_date'] = m['scan_date']
                     f.update(**update)
+                else:
+                    print(m)
+            else:
+                print(v)
 
     #download file from media directory
     def downloadFile(self,file,client_id):
